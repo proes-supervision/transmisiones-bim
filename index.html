@@ -1,0 +1,347 @@
+<!--
+ APLICACIÓN DE TRANSMISIÓN CDE (Fase 3)
+ Esta aplicación web sirve como el formulario frontal para
+ registrar una transmisión (Transmittal) según la ISO 19650.
+-->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario de Transmisión CDE - HIO</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos (spinner, disabled, etc.) */
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner {
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        .form-field:disabled {
+            background-color: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center py-10">
+    <div class="w-full max-w-2xl bg-white p-6 sm:p-8 rounded-2xl shadow-xl mx-4">
+
+        <!-- Encabezado -->
+        <div class="mb-6 text-center">
+            <h1 class="text-3xl font-bold text-gray-800">Formulario de Transmisión CDE</h1>
+            <p class="text-xl text-gray-700 mt-1">Proyecto Hospital de 2do. Nivel Isaias</p>
+        </div>
+
+        <!-- Formulario -->
+        <form id="transmittalForm" onsubmit="return false;">
+            
+            <!-- 1. Sección de Validación -->
+            <div class="space-y-4">
+                <div>
+                    <label for="claveAcceso" class="block text-sm font-medium text-gray-700 mb-1">
+                        Clave de Acceso Personal (Obligatorio)
+                    </label>
+                    <div class="flex gap-2">
+                        <input type="password" id="claveAcceso" 
+                               placeholder="Ingrese su clave de usuario autorizada"
+                               class="form-field w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400">
+                        <button type="button" id="validateKeyButton" 
+                                class="px-4 py-2 bg-[#ff9e3d] text-white font-semibold rounded-md shadow-sm hover:bg-[#e08c34] transition-all duration-200">
+                            Validar
+                        </button>
+                    </div>
+                    <p id="keyMessage" class="text-sm font-semibold mt-2 h-5"></p>
+                </div>
+            </div>
+
+            <!-- 2. Cuerpo del Formulario (Bloqueado por defecto) -->
+            <fieldset id="formBody" disabled class="space-y-4 mt-4 border-t border-gray-200 pt-4">
+                
+                <!-- De (Automático) -->
+                <div>
+                    <label for="de_usuario" class="block text-sm font-medium text-gray-700 mb-1">De:</label>
+                    <input type="text" id="de_usuario" readonly
+                           class="form-field w-full px-3 py-2 bg-gray-200 text-gray-500 border border-gray-300 rounded-md focus:outline-none">
+                </div>
+
+                <!-- Para (Destinatario) -->
+                <div>
+                    <label for="para_originador" class="block text-sm font-medium text-gray-700 mb-1">Para (Destinatario):</label>
+                    <select id="para_originador" class="form-field form-select w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-500">
+                        <option value="" selected disabled>Seleccione un destinatario...</option>
+                        <!-- Estos códigos deben coincidir con la Col C del Panel de Control -->
+                        <option value="SUP">SUP - Supervision (ZOFRA)</option>
+                        <option value="CON">CON - Contratista (ESTRELLA)</option>
+                        <option value="FIS">FIS - Fiscalizacion (GAMO)</option>
+                        <option value="ARQ">ARQ - Arquitectura (Proyectista)</option>
+                    </select>
+                </div>
+
+                <!-- Propósito (ISO 19650 Estados) -->
+                <div>
+                    <label for="proposito" class="block text-sm font-medium text-gray-700 mb-1">Propósito de la Transmisión:</label>
+                    <select id="proposito" class="form-field form-select w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-500">
+                        <option value="" selected disabled>Seleccione un propósito...</option>
+                        <option value="S1 - Para Revisión/Comentarios">S1 - Para Revisión/Comentarios</option>
+                        <option value="S2 - Para Aprobación">S2 - Para Aprobación</option>
+                        <option value="S3 - Para Información">S3 - Para Información</option>
+                        <option value="S4 - Respuesta a RFI">S4 - Respuesta a RFI</option>
+                    </select>
+                </div>
+
+                <!-- Lista de Archivos (Enlaces) -->
+                <div>
+                    <label for="archivos" class="block text-sm font-medium text-gray-700 mb-1">Archivos a Transmitir (Enlaces de Google Drive)</label>
+                    <textarea id="archivos" rows="6" 
+                              placeholder="Pegue aquí los enlaces de Google Drive de sus archivos (en la carpeta WIP), un enlace por línea..."
+                              class="form-field w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"></textarea>
+                    <p class="mt-1 text-xs text-gray-500">
+                        Asegúrese de pegar el enlace "Obtener enlace" de cada archivo.
+                    </p>
+                </div>
+
+                <!-- Comentarios (Opcional) -->
+                <div>
+                    <label for="comentarios" class="block text-sm font-medium text-gray-700 mb-1">Comentarios (Opcional)</label>
+                    <textarea id="comentarios" rows="3" 
+                              placeholder="Añada cualquier comentario relevante para esta transmisión..."
+                              class="form-field w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"></textarea>
+                </div>
+
+                <!-- Botón de Transmitir -->
+                <div class="pt-4">
+                    <button type="button" id="transmitButton"
+                            class="w-full flex justify-center items-center gap-3 px-4 py-3 bg-orange-200 text-white font-bold rounded-md shadow-md transition-all duration-200 ease-in-out cursor-not-allowed"
+                            disabled>
+                        <div id="loadingSpinner" class="spinner w-5 h-5 border-4 border-t-4 border-white rounded-full hidden"></div>
+                        <span id="transmitButtonText">Transmitir Archivos</span>
+                    </button>
+                    <p id="transmitMessage" class="text-sm text-center font-semibold mt-2 h-5"></p>
+                </div>
+
+            </fieldset>
+            
+            <!-- Botón de Limpiar -->
+            <button type="button" id="clearButton"
+                    class="w-full flex justify-center items-center gap-2 px-4 py-2 bg-gray-200 text-gray-700 font-medium rounded-md shadow-sm transition-all duration-200 ease-in-out hover:bg-gray-300 mt-3">
+                Limpiar Formulario
+            </button>
+
+        </form>
+
+        <!-- Pie de página -->
+        <p class="text-center text-xs text-gray-400 mt-8">
+            Desarrollado por ZOFRA-ORURO para el Proyecto HIO.
+        </p>
+    </div>
+
+    <!-- Lógica de la Aplicación -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // --- CONEXIÓN AL BACK-END ---
+            // ¡¡¡PEGUE AQUÍ LA URL DE SU *NUEVO* SCRIPT DE TRANSMISIONES!!!
+            const googleAppScriptURL = "https://script.google.com/macros/s/AKfycbxnm6yVMPYSyd-qEpYsdaDkSSpzLhy2cvJ98Gh4yc-yJ8w6YY0NNpjwFkUe4cs9A0VH/exec";
+
+            // --- ESTADO GLOBAL ---
+            let usuarioValidado = null; // Guardará {nombre, codigo}
+
+            // --- REFERENCIAS A ELEMENTOS ---
+            const form = document.getElementById('transmittalForm');
+            const formBody = document.getElementById('formBody');
+
+            const claveInput = document.getElementById('claveAcceso');
+            const validateKeyButton = document.getElementById('validateKeyButton');
+            const keyMessage = document.getElementById('keyMessage');
+
+            const deUsuarioInput = document.getElementById('de_usuario');
+            const paraInput = document.getElementById('para_originador');
+            const propositoInput = document.getElementById('proposito');
+            const archivosInput = document.getElementById('archivos');
+            const comentariosInput = document.getElementById('comentarios');
+
+            const transmitButton = document.getElementById('transmitButton');
+            const transmitButtonText = document.getElementById('transmitButtonText');
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            const transmitMessage = document.getElementById('transmitMessage');
+            const clearButton = document.getElementById('clearButton');
+
+            // --- LÓGICA PRINCIPAL ---
+
+            const isFormValid = () => {
+                const paraValid = paraInput.value !== "";
+                const propositoValid = propositoInput.value !== "";
+                const archivosValid = archivosInput.value.trim() !== "";
+                return paraValid && propositoValid && archivosValid && (usuarioValidado != null);
+            };
+
+            const updateUI = () => {
+                const formIsValid = isFormValid();
+                if (formIsValid) {
+                    transmitButton.disabled = false;
+                    transmitButton.classList.remove('bg-orange-200', 'cursor-not-allowed');
+                    transmitButton.classList.add('bg-[#ff9e3d]', 'hover:bg-[#e08c34]'); 
+                } else {
+                    transmitButton.disabled = true;
+                    transmitButton.classList.add('bg-orange-200', 'cursor-not-allowed');
+                    transmitButton.classList.remove('bg-[#ff9e3d]', 'hover:bg-[#e08c34]'); 
+                }
+            };
+
+            // --- ACCIONES DE BOTONES ---
+
+            // 1. VALIDAR CLAVE (Usando la arquitectura v18/v19)
+            const handleKeyValidation = async () => {
+                const clave = claveInput.value.trim();
+                if (!clave) {
+                    keyMessage.innerText = "Por favor, ingrese una clave.";
+                    keyMessage.className = "text-sm font-semibold mt-2 h-5 text-red-600";
+                    return;
+                }
+
+                validateKeyButton.disabled = true;
+                validateKeyButton.innerText = "Validando...";
+                keyMessage.innerText = "Validando clave...";
+                keyMessage.className = "text-sm font-semibold mt-2 h-5 text-gray-500";
+                
+                try {
+                    const response = await fetch(googleAppScriptURL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'text/plain' }, 
+                        body: JSON.stringify({
+                            action: "validate", 
+                            claveAcceso: clave
+                        })
+                    });
+
+                    if (!response.ok) throw new Error(`Error de red: ${response.statusText}`);
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        keyMessage.innerText = result.message; 
+                        keyMessage.className = "text-sm font-semibold mt-2 h-5 text-green-600";
+                        usuarioValidado = result.usuario; // Guarda {nombre, codigo}
+                        
+                        deUsuarioInput.value = `${usuarioValidado.nombre} (${usuarioValidado.codigo})`;
+                        
+                        formBody.disabled = false;
+                        claveInput.disabled = true; 
+                        validateKeyButton.innerText = "Validado";
+                        validateKeyButton.classList.add("bg-green-600", "hover:bg-green-600", "cursor-not-allowed");
+                        validateKeyButton.classList.remove("bg-[#ff9e3d]", "hover:bg-[#e08c34]");
+                        
+                    } else {
+                        throw new Error(result.message);
+                    }
+                } catch (error) {
+                    console.error('Error en validación:', error);
+                    keyMessage.innerText = `Error: ${error.message || 'Failed to fetch'}`;
+                    keyMessage.className = "text-sm font-semibold mt-2 h-5 text-red-600";
+                    validateKeyButton.disabled = false;
+                    validateKeyButton.innerText = "Validar";
+                    usuarioValidado = null;
+                }
+            };
+            
+            validateKeyButton.addEventListener('click', handleKeyValidation);
+
+            // 2. TRANSMITIR ARCHIVOS
+            const handleTransmit = () => {
+                if (!isFormValid()) {
+                     alert("Por favor, complete todos los campos obligatorios antes de transmitir.");
+                    return;
+                }
+                
+                // Confirmación
+                if (!confirm("¿Está seguro de que desea transmitir estos archivos? Esta acción registrará una entrega formal.")) {
+                    return;
+                }
+
+                transmitButton.disabled = true;
+                transmitButtonText.classList.add('hidden');
+                loadingSpinner.classList.remove('hidden');
+                transmitMessage.innerText = `Transmitiendo como ${usuarioValidado.nombre}...`;
+                transmitMessage.className = "text-sm text-center font-semibold mt-2 h-5 text-gray-500";
+                
+                const payload = {
+                    usuario: usuarioValidado, // {nombre, codigo}
+                    para: paraInput.value,
+                    proposito: propositoInput.value,
+                    archivos: archivosInput.value,
+                    comentarios: comentariosInput.value
+                };
+
+                // "Fire and Forget" (v22) - Asumimos que funcionará
+                fetch(googleAppScriptURL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' },
+                    body: JSON.stringify({
+                        action: "transmitir", 
+                        payload: payload
+                    })
+                }).catch(err => {
+                    console.error('Error de red al transmitir:', err);
+                });
+                
+                // Asumimos éxito y limpiamos
+                setTimeout(() => {
+                    transmitMessage.innerText = "¡Transmisión enviada con éxito!";
+                    transmitMessage.className = "text-sm text-center font-semibold mt-2 h-5 text-green-600";
+                    
+                    clearForm(false); // No limpiar la clave
+                    
+                    transmitButton.disabled = false;
+                    transmitButtonText.classList.remove('hidden');
+                    loadingSpinner.classList.add('hidden');
+                    
+                    setTimeout(() => {
+                         transmitMessage.innerText = "";
+                    }, 3000);
+
+                }, 2500); // 2.5 segundos
+            };
+
+            transmitButton.addEventListener('click', handleTransmit);
+
+            // 3. LIMPIAR FORMULARIO
+            const clearForm = (limpiarClave = true) => {
+                form.reset(); // Limpia todo
+                
+                if (limpiarClave) {
+                    claveInput.value = "";
+                    claveInput.disabled = false;
+                    validateKeyButton.disabled = false;
+                    validateKeyButton.innerText = "Validar";
+                    validateKeyButton.classList.add("bg-[#ff9e3d]", "hover:bg-[#e08c34]");
+                    validateKeyButton.classList.remove("bg-green-600", "hover:bg-green-600", "cursor-not-allowed");
+                    keyMessage.innerText = "";
+                    keyMessage.className = "text-sm font-semibold mt-2 h-5";
+                    formBody.disabled = true; 
+                    usuarioValidado = null;
+                } else {
+                    // Si no limpiamos la clave, re-rellenamos el campo "De:"
+                    deUsuarioInput.value = `${usuarioValidado.nombre} (${usuarioValidado.codigo})`;
+                }
+                
+                transmitMessage.innerText = "";
+                updateUI();
+            };
+
+            clearButton.addEventListener('click', () => clearForm(true));
+
+            // --- INICIALIZACIÓN ---
+            const allInputs = [paraInput, propositoInput, archivosInput, comentariosInput];
+            allInputs.forEach(input => {
+                input.addEventListener('change', updateUI);
+                input.addEventListener('keyup', updateUI);
+            });
+            
+            updateUI();
+        });
+    </script>
+</body>
+</html>
