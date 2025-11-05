@@ -1,7 +1,13 @@
 <!--
- APLICACIÓN DE TRANSMISIÓN CDE (Fase 3)
+ APLICACIÓN DE TRANSMISIÓN CDE (Fase 3 - Definitiva)
  Esta aplicación web sirve como el formulario frontal para
  registrar una transmisión (Transmittal) según la ISO 19650.
+ 
+ ARQUITECTURA:
+ Utiliza la misma arquitectura probada (v18/v22) de la Fase 1:
+ 1. Usa 'doPost' para todas las acciones ("validate", "transmitir").
+ 2. Envía los datos como 'text/plain' para evitar errores 'Failed to fetch' (CORS).
+ 3. El registro es "Fire and Forget" para evitar "cuelgues".
 -->
 <!DOCTYPE html>
 <html lang="es">
@@ -10,7 +16,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formulario de Transmisión CDE - HIO</title>
     <!-- Carga de Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
     <style>
         /* Estilos (spinner, disabled, etc.) */
         @keyframes spin {
@@ -77,7 +83,7 @@
                         <option value="SUP">SUP - Supervision (ZOFRA)</option>
                         <option value="CON">CON - Contratista (ESTRELLA)</option>
                         <option value="FIS">FIS - Fiscalizacion (GAMO)</option>
-                        <option value="ARQ">ARQ - Arquitectura (Proyectista)</option>
+                        <!-- Puede añadir más si los agregó a su Panel de Control -->
                     </select>
                 </div>
 
@@ -100,7 +106,7 @@
                               placeholder="Pegue aquí los enlaces de Google Drive de sus archivos (en la carpeta WIP), un enlace por línea..."
                               class="form-field w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"></textarea>
                     <p class="mt-1 text-xs text-gray-500">
-                        Asegúrese de pegar el enlace "Obtener enlace" de cada archivo.
+                        Asegúrese de pegar el enlace "Obtener enlace" de cada archivo (ej. [https://drive.google.com/file/d/](https://drive.google.com/file/d/)...).
                     </p>
                 </div>
 
@@ -194,7 +200,7 @@
 
             // --- ACCIONES DE BOTONES ---
 
-            // 1. VALIDAR CLAVE (Usando la arquitectura v18/v19)
+            // 1. VALIDAR CLAVE (Usando la arquitectura v18/v19 de Fase 1)
             const handleKeyValidation = async () => {
                 const clave = claveInput.value.trim();
                 if (!clave) {
@@ -211,6 +217,7 @@
                 try {
                     const response = await fetch(googleAppScriptURL, {
                         method: 'POST',
+                        // Se usa 'text/plain' para evitar el "pre-flight" (CORS)
                         headers: { 'Content-Type': 'text/plain' }, 
                         body: JSON.stringify({
                             action: "validate", 
@@ -249,15 +256,14 @@
             
             validateKeyButton.addEventListener('click', handleKeyValidation);
 
-            // 2. TRANSMITIR ARCHIVOS
+            // 2. TRANSMITIR ARCHIVOS (Usando "Fire and Forget")
             const handleTransmit = () => {
                 if (!isFormValid()) {
                      alert("Por favor, complete todos los campos obligatorios antes de transmitir.");
                     return;
                 }
                 
-                // Confirmación
-                if (!confirm("¿Está seguro de que desea transmitir estos archivos? Esta acción registrará una entrega formal.")) {
+                if (!confirm("¿Está seguro de que desea transmitir estos archivos? Esta acción registrará una entrega formal y enviará una notificación.")) {
                     return;
                 }
 
@@ -275,7 +281,7 @@
                     comentarios: comentariosInput.value
                 };
 
-                // "Fire and Forget" (v22) - Asumimos que funcionará
+                // "Fire and Forget"
                 fetch(googleAppScriptURL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain' },
@@ -323,7 +329,6 @@
                     formBody.disabled = true; 
                     usuarioValidado = null;
                 } else {
-                    // Si no limpiamos la clave, re-rellenamos el campo "De:"
                     deUsuarioInput.value = `${usuarioValidado.nombre} (${usuarioValidado.codigo})`;
                 }
                 
@@ -338,6 +343,14 @@
             allInputs.forEach(input => {
                 input.addEventListener('change', updateUI);
                 input.addEventListener('keyup', updateUI);
+            });
+            
+            // Escuchadores de 'change' y 'keyup' para los inputs del fieldset
+             Object.values(allInputs).forEach(input => {
+                input.addEventListener('change', updateUI);
+                if (input.type === 'textarea') {
+                    input.addEventListener('keyup', updateUI);
+                }
             });
             
             updateUI();
