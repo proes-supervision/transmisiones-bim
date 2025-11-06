@@ -1,13 +1,11 @@
 <!--
- APLICACIÓN DE TRANSMISIÓN CDE (Fase 3 - Definitiva)
- Esta aplicación web sirve como el formulario frontal para
- registrar una transmisión (Transmittal) según la ISO 19650.
- 
+ APLICACIÓN DE TRANSMISIÓN CDE (Fase 3 - v25 Definitiva)
  ARQUITECTURA:
- Utiliza la misma arquitectura probada (v18/v22) de la Fase 1:
  1. Usa 'doPost' para todas las acciones ("validate", "transmitir").
- 2. Envía los datos como 'text/plain' para evitar errores 'Failed to fetch' (CORS).
- 3. El registro es "Fire and Forget" para evitar "cuelgues".
+ 2. Envía los datos como 'application/json' (el método limpio y profesional).
+ 3. El script v25 (con doOptions y headers CORS) está diseñado para manejar esto.
+ 4. USA 'await' y 'try/catch' (no "Fire and Forget") para que el usuario
+    reciba mensajes de éxito o error reales, sin "colgarse".
 -->
 <!DOCTYPE html>
 <html lang="es">
@@ -16,7 +14,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Formulario de Transmisión CDE - HIO</title>
     <!-- Carga de Tailwind CSS -->
-    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Estilos (spinner, disabled, etc.) */
         @keyframes spin {
@@ -106,7 +104,7 @@
                               placeholder="Pegue aquí los enlaces de Google Drive de sus archivos (en la carpeta WIP), un enlace por línea..."
                               class="form-field w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-400"></textarea>
                     <p class="mt-1 text-xs text-gray-500">
-                        Asegúrese de pegar el enlace "Obtener enlace" de cada archivo (ej. [https://drive.google.com/file/d/](https://drive.google.com/file/d/)...).
+                        Asegúrese de pegar el enlace "Obtener enlace" de cada archivo (ej. https://drive.google.com/file/d/...).
                     </p>
                 </div>
 
@@ -200,7 +198,7 @@
 
             // --- ACCIONES DE BOTONES ---
 
-            // 1. VALIDAR CLAVE (Usando la arquitectura v18/v19 de Fase 1)
+            // 1. VALIDAR CLAVE (v25 - Usa 'application/json')
             const handleKeyValidation = async () => {
                 const clave = claveInput.value.trim();
                 if (!clave) {
@@ -217,8 +215,8 @@
                 try {
                     const response = await fetch(googleAppScriptURL, {
                         method: 'POST',
-                        // Se usa 'text/plain' para evitar el "pre-flight" (CORS)
-                        headers: { 'Content-Type': 'text/plain' }, 
+                        // Se usa 'application/json' (método limpio)
+                        headers: { 'Content-Type': 'application/json' }, 
                         body: JSON.stringify({
                             action: "validate", 
                             claveAcceso: clave
@@ -255,9 +253,17 @@
             };
             
             validateKeyButton.addEventListener('click', handleKeyValidation);
+             claveInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault(); 
+                    handleKeyValidation();
+                }
+            });
 
-            // 2. TRANSMITIR ARCHIVOS (Usando "Fire and Forget")
-            const handleTransmit = () => {
+            // 2. TRANSMITIR ARCHIVOS (v25 - Usa 'application/json')
+            // Ahora SÍ esperamos la respuesta (no "Fire and Forget")
+            // porque el script v25 nos da el "pasaporte" CORS.
+            const handleTransmit = async () => {
                 if (!isFormValid()) {
                      alert("Por favor, complete todos los campos obligatorios antes de transmitir.");
                     return;
@@ -281,34 +287,42 @@
                     comentarios: comentariosInput.value
                 };
 
-                // "Fire and Forget"
-                fetch(googleAppScriptURL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify({
-                        action: "transmitir", 
-                        payload: payload
-                    })
-                }).catch(err => {
-                    console.error('Error de red al transmitir:', err);
-                });
-                
-                // Asumimos éxito y limpiamos
-                setTimeout(() => {
-                    transmitMessage.innerText = "¡Transmisión enviada con éxito!";
-                    transmitMessage.className = "text-sm text-center font-semibold mt-2 h-5 text-green-600";
+                try {
+                    const response = await fetch(googleAppScriptURL, {
+                        method: 'POST',
+                        // Se usa 'application/json' (método limpio)
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: "transmitir", 
+                            payload: payload
+                        })
+                    });
                     
-                    clearForm(false); // No limpiar la clave
-                    
-                    transmitButton.disabled = false;
-                    transmitButtonText.classList.remove('hidden');
-                    loadingSpinner.classList.add('hidden');
-                    
-                    setTimeout(() => {
-                         transmitMessage.innerText = "";
-                    }, 3000);
+                    if (!response.ok) throw new Error(`Error de red: ${response.statusText}`);
+                    const result = await response.json();
 
-                }, 2500); // 2.5 segundos
+                    if (result.status === 'success') {
+                        transmitMessage.innerText = result.message; // "¡Transmisión ... registrada!"
+                        transmitMessage.className = "text-sm text-center font-semibold mt-2 h-5 text-green-600";
+                        
+                        alert("Transmisión completada. El formulario se limpiará.");
+                        clearForm(false); // No limpiar la clave
+                        
+                    } else {
+                        throw new Error(result.message);
+                    }
+
+                } catch (error) {
+                    console.error('Error al transmitir:', error);
+                    transmitMessage.innerText = `Error: ${error.message || 'Failed to fetch'}`;
+                    transmitMessage.className = "text-sm text-center font-semibold mt-2 h-5 text-red-600";
+                    alert("Error al transmitir: " + error.message);
+                }
+                
+                // Siempre reactivar el botón al final
+                transmitButton.disabled = false;
+                transmitButtonText.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
             };
 
             transmitButton.addEventListener('click', handleTransmit);
@@ -345,8 +359,7 @@
                 input.addEventListener('keyup', updateUI);
             });
             
-            // Escuchadores de 'change' y 'keyup' para los inputs del fieldset
-             Object.values(allInputs).forEach(input => {
+            Object.values(allInputs).forEach(input => {
                 input.addEventListener('change', updateUI);
                 if (input.type === 'textarea') {
                     input.addEventListener('keyup', updateUI);
